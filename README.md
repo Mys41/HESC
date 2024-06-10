@@ -17,7 +17,7 @@ bash process_esconv.sh
 ## Experiments
 
 For our experiments we use LLaMa v2 chat models with 4bit quantization. You can follow the instruction in the following
-links to get access to [7b](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf)models on huggingface.
+links to get access to [LLaMa2-7b-chat](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf) models on huggingface.
 
 All of the experiments are conducted using the `transformers` library. We use bitsandbytes to quantize the models.
 
