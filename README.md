@@ -25,6 +25,14 @@ python unrepeat.py
 python privacy_filter.py
 ```
 
+## 预训练
+模型预训练的相关文件在`pretrain/`目录下。您可以运行`pretrain.sh`以使用torchrun实现并行训练(单机多卡)
+，注意我们仅使用了数据并行和ZeRO优化技术。我们基于Transformers和DeepSpeed进行训练，其中DeepSpeed的配置文件位于`pretrain/DeepSpeed.json`。您可以使用以下命令运行脚本：
+
+```sh
+bash pretrain.sh
+```
+
 ## 转换数据格式
 对于清洗后的数据`esconv/filter.json`，您可以运行`process_esconv.sh`以将数据转换为我们在实验中使用的格式。
 它将在同一文件夹中创建一个json文件 ，名为`conversations.json`。您可以使用以下命令运行脚本：
