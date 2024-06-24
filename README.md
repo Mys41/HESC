@@ -2,6 +2,14 @@
 
 该存储库包含论文 "Being Human Supporters: Guiding LLMs for Emotional Support Conversation via Chain-of-Thought" 的代码和数据
 
+## 安装依赖
+运行我们的模型需要安装的包在`requirement.txt`中给出。注意，由于使用了Flash Attention，您需要将CUDA版本升级至11.6或以上。
+您可以使用以下命令运行脚本来安装依赖：
+
+```shell
+pip install requirement.txt
+```
+
 ## 数据清洗
 原始ESConv数据集位于`esconv/`目录下。您可以运行`quality_filter`以对数据进行质量过滤，过滤后的文件名为`qfilter.json`
 我们使用预训练好的FastText语言分类器，为每个输入文本生成一个语言标签，不符合配置文件中语言类别的文本将被过滤：
