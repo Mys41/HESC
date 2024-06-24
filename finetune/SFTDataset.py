@@ -54,7 +54,7 @@ class SFTDataset:
         input_ids = []
         labels = []
         # 读取数据集作为字典
-        list_data_dict = json.load(open(self.args.dataset))
+        list_data_dict = json.load(open(self.args.data_path))
 
         # 遍历每一个样本
         for example in list_data_dict:

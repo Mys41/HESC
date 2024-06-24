@@ -34,7 +34,7 @@ bash pretrain.sh
 ```
 
 ## 指令微调
-模型指令微调的相关文件在`finetune/`目录下。微调的配置和预训练的配置类似，也使用torchrun实现并行训练。 
+模型指令微调的相关文件在`finetune/`目录下，微调的数据是`data/finetune.json`。微调的配置和预训练的配置类似，也使用torchrun实现并行训练。 
 和预训练一样，我们基于Transformers和DeepSpeed进行微调，使用数据并行、ZeRO阶段3、BF16和激活重计算技术。您可以使用以下命令运行脚本：
 
 ```sh
@@ -53,7 +53,8 @@ bash process_esconv.sh
 对于我们的实验，我们使用具有4位量化的LLaMa v2 chat模型。您可以访问模型
 [LLaMa2-7b-chat](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf)在huggingface上的链接。
 
-所有实验都是使用“transformers”库进行的。我们使用bitsandbytes来量化模型。
+所有实验都是使用“transformers”库进行的。我们使用bitsandbytes来4位量化模型。并且通过vLLM库对键值缓存进行分页存储，并结合PagedAttention技术，
+显著提升了解码时注意力的计算效率。同时它还支持多种解码策略，引入了批次管理优化技术。
 
 您可以使用以下命令运行论文中的实验：
 

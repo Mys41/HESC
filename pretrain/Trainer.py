@@ -19,7 +19,7 @@ class Arguments(TrainingArguments):
         help="The model name or path, e.g., `meta-llama/Llama-2-7b-chat`",
     )
     # 训练数据集
-    dataset: str = HfArg(
+    data_path: str = HfArg(
         default="",
         help="Setting the names of data file.",
     )

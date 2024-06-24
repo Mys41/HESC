@@ -44,7 +44,7 @@ class PTDataset:
     # 调用数据集加载、分词、批次化
     def process(self):
         input_ids = []
-        list_data_dict = load_dataset('text', data_files=self.args.dataset)['train']
+        list_data_dict = load_dataset('text', data_files=self.args.data_path)['train']
         tokenized_dataset = list_data_dict.map(
             self.encode,
             batched=True,

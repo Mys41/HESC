@@ -9,6 +9,7 @@ import os
 from tqdm import tqdm
 from accelerate import Accelerator
 import random
+import vllm
 
 random.seed(11335577)
 
@@ -220,9 +221,6 @@ def get_model_and_tokenizer(model_name, cache_dir, load_in_4bit=True):
     if load_in_4bit:
         quantization_config = BitsAndBytesConfig(
             load_in_8bit=False, load_in_4bit=True
-            # bnb_4bit_quant_type="nf4",  使用NF4数据类型
-            # bnb_4bit_use_double_quant=True,  使用嵌套量化技术
-            # bnb_4bit_compute_dtype=torch.bfloat16   计算数据类型设置为 torch.bfloat16
         )
         # 将模型复制到每个设备
         # device_map 一个字典，用于指定模型应该在哪个设备上加载。字典的键是模型的部分名称，值是设备的索引。
@@ -238,12 +236,19 @@ def get_model_and_tokenizer(model_name, cache_dir, load_in_4bit=True):
         torch_dtype = None
 
     # 从预训练模型中加载模型，并将上述的量化配置、设备映射、缓存目录和张量数据类型作为参数传入
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        quantization_config=quantization_config,  # 设置模型的量化配置
-        device_map=device_map,  # 设置模型在多个设备上的分布
-        cache_dir=cache_dir,  # 设置模型和配置文件的缓存目录
-        torch_dtype=torch_dtype,  # 设置模型的数据类型
+    # model = AutoModelForCausalLM.from_pretrained(
+    #     model_name,
+    #     quantization_config=quantization_config,  # 设置模型的量化配置
+    #     device_map=device_map,  # 设置模型在多个设备上的分布
+    #     cache_dir=cache_dir,  # 设置模型和配置文件的缓存目录
+    #     torch_dtype=torch_dtype,  # 设置模型的数据类型
+    # )
+
+    # 初始化vLLM的模型
+    model = vllm.LLM(
+        model=model_name,
+        gpu_memory_utilization=0.9,  # 限制GPU内存的使用率不超过90%
+        dtype=torch_dtype,  # 设置模型的数据类型
     )
 
     return model, tokenizer
@@ -281,7 +286,7 @@ def get_continuation_prompt(conversation, model, tokenizer, model_type='llama', 
             prompt = prompt_constructor(sys_msg, dialog, tokenizer, n_turns_as_conv=n_turns_as_conv,
                                         history_first=history_first)
             # 将构造好的提示输入分词器，获得input_ids
-            input_ids = tokenizer(prompt, return_tensors='pt', add_special_tokens=False)['input_ids'].to(model.device)
+            input_ids = tokenizer(prompt, return_tensors='pt', add_special_tokens=False)['input_ids'].to('cuda')
             # print("prompt: ", prompt)
             # 提示长度如果大于内存限制，则跳过这个样本
             if len(input_ids[0]) > 1400:
@@ -293,16 +298,31 @@ def get_continuation_prompt(conversation, model, tokenizer, model_type='llama', 
         else:
             raise ValueError(f"model_type should be one of ['llama', 'mistral'], but got {model_type}")
 
-        # todo: 当前聚合仅支持贪婪解码
-        outputs = model.generate(input_ids, do_sample=False, max_new_tokens=max_new_tokens,
-                                 return_dict_in_generate=True)
+        # 贪婪解码
+        # outputs = model.generate(input_ids, do_sample=False, max_new_tokens=max_new_tokens,
+        #                          return_dict_in_generate=True)
+
+        # 设置vLLM的解码参数
+        sampling_params = vllm.SamplingParams(
+            temperature=0.8,  # 控制随机性
+            top_p=0.8,  # 控制累积概率
+            top_k=20,  # 控制最高概率的词的数量
+            presence_penalty=0.1,  # 存在惩罚系数，值大于0会鼓励模型使用新的词，而值小于0会鼓励模型重复词
+            frequency_penalty=0,  # 频率惩罚系数
+            max_tokens=2048,  # 新生成的token数上限
+        )
+
+        # 调用vLLM的模型进行生成
+        outputs = model.generate(prompt, sampling_params=sampling_params)
 
         # 将构造的提示按策略加入提示字典
         prompts[strategy] = prompt
 
         # 获取模型的输出序列，并去掉输入部分(input_ids[0]的长度)，得到模型的响应response
-        response = outputs.sequences[0][len(input_ids[0]):]
-        output_txt = tokenizer.decode(response, skip_special_tokens=True).strip()
+        # response = outputs.sequences[0][len(input_ids[0]):]
+        # output_txt = tokenizer.decode(response, skip_special_tokens=True).strip()
+        for it in outputs:
+            output_txt = it.outputs[0].text
         # 将output_txt添加到responses字典中
         responses[strategy] = output_txt
         # 打印出提示prompt，以及策略strategy 和对应的响应文本output_txt

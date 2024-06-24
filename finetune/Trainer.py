@@ -1,7 +1,7 @@
 import os
 import torch
 from dataclasses import dataclass
-import SFTDataset
+from SFTDataset import SFTDataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -36,9 +36,9 @@ class Arguments(TrainingArguments):
         help="The model name or path, e.g., `meta-llama/Llama-2-7b-chat`",
     )
     # 微调数据集
-    dataset: str = HfArg(
+    data_path: str = HfArg(
         default="",
-        help="Setting the names of data file.",
+        help="Setting the name or path of data file.",
     )
     # 上下文窗口大小
     model_max_length: int = HfArg(
@@ -98,7 +98,10 @@ def train():
     # 加载LoRA配置并初始化LoRA模型
     if args.lora:
         # 加载模型，并使用FlashAttention
-        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, attn_implementation="flash_attention_2")
+        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, attn_implementation="flash_attention_2",
+                                                     torch_dtype=torch.bfloat16)
+        # 将模型移动到GPU上
+        model.to('cuda')
         # 配置LoRA微调参数
         peft_config = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -110,7 +113,10 @@ def train():
         model = get_peft_model(model, peft_config)
     else:
         # 直接加载模型，并使用FlashAttention
-        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, attn_implementation="flash_attention_2")
+        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, attn_implementation="flash_attention_2",
+                                                     torch_dtype=torch.bfloat16)
+        # 将模型移动到GPU上
+        model.to('cuda')
 
     # 初始化训练器、准备训练数据并开始训练
     kwargs = dict(
